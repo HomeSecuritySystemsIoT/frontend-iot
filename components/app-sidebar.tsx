@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Shield, LogOut, LayoutGrid, ChevronRight } from "lucide-react"
+import { Shield, LogOut, LayoutGrid } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 import { logout } from "@/app/auth/actions"
 
@@ -36,19 +36,17 @@ export function AppSidebar() {
           }`}
         >
           <LayoutGrid className="size-4 flex-shrink-0" />
-          Dashboard
-          <ChevronRight className="size-3.5 ml-auto opacity-40" />
+          Groups
         </Link>
       </nav>
 
       <div className="border-t border-sidebar-border p-3">
-        <div className="flex items-center gap-2.5 rounded-lg p-2 hover:bg-accent transition-colors">
+        <div className="flex items-center gap-2.5 rounded-lg p-2">
           <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary text-xs font-semibold flex-shrink-0">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium truncate">{user.email}</p>
-            <p className="text-[10px] text-muted-foreground">admin</p>
           </div>
           <form action={logout}>
             <button

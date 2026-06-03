@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { eq } from "drizzle-orm"
 import { getCurrentSession } from "@/lib/session"
 import { createGroupRecord } from "@/drizzle/actions/groups"
 import { createHouseRecord } from "@/drizzle/actions/houses"
@@ -10,6 +11,8 @@ import {
   setCameraMotionDetection,
 } from "@/drizzle/actions/cameras"
 import { createClaimToken } from "@/drizzle/actions/claimTokens"
+import { db } from "@/drizzle/db"
+import { cameras } from "@/drizzle/schema"
 
 // ── Group ─────────────────────────────────────────────────────────────────────
 
@@ -116,6 +119,31 @@ export async function toggleCameraMotionDetection(
   path: string
 ): Promise<void> {
   await setCameraMotionDetection(cameraId, motionDetection)
+  revalidatePath(path)
+}
+
+// ── Camera management ────────────────────────────────────────────────────────
+
+export async function deleteCamera(
+  cameraId: number,
+  path: string
+): Promise<void> {
+  const { user } = await getCurrentSession()
+  if (!user) throw new Error("Not authenticated")
+  await db.delete(cameras).where(eq(cameras.id, cameraId))
+  revalidatePath(path)
+}
+
+export async function updateCameraName(
+  cameraId: number,
+  name: string,
+  path: string
+): Promise<void> {
+  const { user } = await getCurrentSession()
+  if (!user) throw new Error("Not authenticated")
+  const trimmed = name.trim()
+  if (!trimmed) return
+  await db.update(cameras).set({ name: trimmed }).where(eq(cameras.id, cameraId))
   revalidatePath(path)
 }
 

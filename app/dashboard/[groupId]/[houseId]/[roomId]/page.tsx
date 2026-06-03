@@ -77,9 +77,9 @@ export default async function RoomPage({
             </div>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {cameras.map((camera) => (
-              <CameraCard key={camera.id} camera={camera} path={path} />
+              <CameraCard key={camera.id} camera={camera} roomName={room.name} path={path} />
             ))}
           </div>
         )}
