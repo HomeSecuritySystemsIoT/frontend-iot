@@ -121,38 +121,35 @@ export function AppSidebar({ hierarchy }: AppSidebarProps) {
       <div className="flex-1 overflow-y-auto">
         {/* ── Section 1: Groups ── */}
         <div className="px-3 pt-4 pb-3">
-          <button
-            onClick={() => setGroupsOpen((o) => !o)}
-            className="flex items-center justify-between w-full px-2 mb-1 group/sec"
-          >
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 group-hover/sec:text-muted-foreground/80 transition-colors">
-              Groups
-            </span>
-            <div className="flex items-center gap-0.5">
-              <span
-                className="opacity-0 group-hover/sec:opacity-100 transition-opacity"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <CreateDialog
-                  title="Create a group"
-                  description="A group lets you manage buildings and share access with other members."
-                  action={createGroup}
-                  triggerLabel="New group"
-                  submitLabel="Create group"
-                  trigger={
-                    <Button variant="ghost" size="icon-xs" title="New group">
-                      <Plus className="size-3" />
-                    </Button>
-                  }
-                />
+          <div className="flex items-center justify-between w-full px-2 mb-1 group/sec">
+            <button
+              onClick={() => setGroupsOpen((o) => !o)}
+              className="flex items-center gap-1 text-left"
+            >
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 hover:text-muted-foreground/80 transition-colors">
+                Groups
               </span>
               {groupsOpen ? (
                 <ChevronDown className="size-3.5 text-muted-foreground/40" />
               ) : (
                 <ChevronRight className="size-3.5 text-muted-foreground/40" />
               )}
-            </div>
-          </button>
+            </button>
+            <span className="opacity-0 group-hover/sec:opacity-100 transition-opacity">
+              <CreateDialog
+                title="Create a group"
+                description="A group lets you manage buildings and share access with other members."
+                action={createGroup}
+                triggerLabel="New group"
+                submitLabel="Create group"
+                trigger={
+                  <Button variant="ghost" size="icon-xs" title="New group">
+                    <Plus className="size-3" />
+                  </Button>
+                }
+              />
+            </span>
+          </div>
 
           {groupsOpen && (
             <div className="space-y-0.5">
@@ -188,47 +185,44 @@ export function AppSidebar({ hierarchy }: AppSidebarProps) {
 
         {/* ── Section 2: Buildings ── */}
         <div className="px-3 py-3">
-          <button
-            onClick={() => setBuildingsOpen((o) => !o)}
-            className="flex items-center justify-between w-full px-2 mb-1 group/sec"
-          >
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 group-hover/sec:text-muted-foreground/80 transition-colors">
-              Buildings
-            </span>
-            <div className="flex items-center gap-0.5">
-              {selectedGroupId && (
-                <span
-                  className="opacity-0 group-hover/sec:opacity-100 transition-opacity"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <CreateDialog
-                    title="Add a building"
-                    description="Add a building to this group to start organising rooms and cameras."
-                    action={createHouse}
-                    hiddenFields={{ groupId: selectedGroupId }}
-                    triggerLabel="Add building"
-                    submitLabel="Add building"
-                    extraFields={
-                      <Field>
-                        <FieldLabel htmlFor="address">Address (optional)</FieldLabel>
-                        <Input id="address" name="address" placeholder="123 Main St" />
-                      </Field>
-                    }
-                    trigger={
-                      <Button variant="ghost" size="icon-xs" title="Add building">
-                        <Plus className="size-3" />
-                      </Button>
-                    }
-                  />
-                </span>
-              )}
+          <div className="flex items-center justify-between w-full px-2 mb-1 group/sec">
+            <button
+              onClick={() => setBuildingsOpen((o) => !o)}
+              className="flex items-center gap-1 text-left"
+            >
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 hover:text-muted-foreground/80 transition-colors">
+                Buildings
+              </span>
               {buildingsOpen ? (
                 <ChevronDown className="size-3.5 text-muted-foreground/40" />
               ) : (
                 <ChevronRight className="size-3.5 text-muted-foreground/40" />
               )}
-            </div>
-          </button>
+            </button>
+            {selectedGroupId && (
+              <span className="opacity-0 group-hover/sec:opacity-100 transition-opacity">
+                <CreateDialog
+                  title="Add a building"
+                  description="Add a building to this group to start organising rooms and cameras."
+                  action={createHouse}
+                  hiddenFields={{ groupId: selectedGroupId }}
+                  triggerLabel="Add building"
+                  submitLabel="Add building"
+                  extraFields={
+                    <Field>
+                      <FieldLabel htmlFor="address">Address (optional)</FieldLabel>
+                      <Input id="address" name="address" placeholder="123 Main St" />
+                    </Field>
+                  }
+                  trigger={
+                    <Button variant="ghost" size="icon-xs" title="Add building">
+                      <Plus className="size-3" />
+                    </Button>
+                  }
+                />
+              </span>
+            )}
+          </div>
 
           {buildingsOpen && (
             <div className="space-y-0.5">
