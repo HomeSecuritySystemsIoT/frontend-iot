@@ -31,6 +31,8 @@ interface CreateDialogProps {
   extraFields?: React.ReactNode
   triggerLabel: string
   submitLabel?: string
+  /** Custom trigger element — overrides the default outline button */
+  trigger?: React.ReactNode
 }
 
 export function CreateDialog({
@@ -41,6 +43,7 @@ export function CreateDialog({
   extraFields,
   triggerLabel,
   submitLabel = "Create",
+  trigger,
 }: CreateDialogProps) {
   const [open, setOpen] = React.useState(false)
   const [state, formAction, isPending] = React.useActionState(action, null)
@@ -52,10 +55,12 @@ export function CreateDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">
-          <Plus className="size-4" />
-          {triggerLabel}
-        </Button>
+        {trigger ?? (
+          <Button variant="outline">
+            <Plus className="size-4" />
+            {triggerLabel}
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

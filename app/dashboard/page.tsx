@@ -1,42 +1,206 @@
 import { redirect } from "next/navigation"
-import Link from "next/link"
-import { Users, Home, ChevronRight, ShieldCheck } from "lucide-react"
+import { Video, DoorOpen, ShieldCheck, Building2 } from "lucide-react"
 import { getCurrentSession } from "@/lib/session"
-import { getGroupsForUser } from "@/drizzle/actions/groups"
-import { DashboardBreadcrumb } from "@/components/dashboard-breadcrumb"
-import { CreateDialog } from "@/components/create-dialog"
-import { createGroup } from "@/app/dashboard/actions"
+import { isGroupMember } from "@/drizzle/actions/groups"
+import { getHouseById } from "@/drizzle/actions/houses"
+import { getRoomsWithCameraCount, getRoomById } from "@/drizzle/actions/rooms"
+import { getCamerasByRoomId } from "@/drizzle/actions/cameras"
+import { CameraCard } from "@/components/camera-card"
+import { AddCameraDialog } from "@/components/add-camera-dialog"
 import { AdminDebugButton } from "@/components/admin-debug-button"
+import { AccessDenied } from "@/components/access-denied"
+import { CreateDialog } from "@/components/create-dialog"
+import { createRoom } from "@/app/dashboard/actions"
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ house?: string; room?: string }>
+}) {
   const { user } = await getCurrentSession()
   if (!user) redirect("/auth/login")
 
-  const isAdmin = user.email === process.env.ADMIN_EMAIL
-  const userGroups = await getGroupsForUser(user.id)
+  const isAdmin = !!(process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL)
+  const { house: houseStr, room: roomStr } = await searchParams
+  const selectedHouseId = houseStr && !isNaN(Number(houseStr)) ? Number(houseStr) : null
+  const selectedRoomId = roomStr && !isNaN(Number(roomStr)) ? Number(roomStr) : null
 
-  return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-8 py-5 border-b border-border bg-card">
-        <div>
-          <DashboardBreadcrumb items={[{ label: "Dashboard" }]} />
-          <h1 className="text-lg font-semibold tracking-tight mt-1.5">Your Groups</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Select a group to manage its houses and cameras.
-          </p>
+  // ── Room view (filtered cameras for one room) ────────────────────────────────
+  if (selectedRoomId) {
+    const room = await getRoomById(selectedRoomId)
+    if (!room) redirect("/dashboard")
+
+    const house = await getHouseById(room.houseId)
+    if (!house) redirect("/dashboard")
+
+    const member = await isGroupMember(house.groupId, user.id)
+    if (!member) return <AccessDenied />
+
+    const cameras = await getCamerasByRoomId(selectedRoomId)
+
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between px-8 py-5 border-b border-border bg-card">
+          <div>
+            <p className="text-xs text-muted-foreground mb-0.5">{house.name}</p>
+            <h1 className="text-lg font-semibold tracking-tight">{room.name}</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {cameras.length} {cameras.length === 1 ? "camera" : "cameras"} in this room
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+              <span className="size-2 rounded-full bg-emerald-500 animate-live" />
+              System active
+            </div>
+            <AddCameraDialog roomId={room.id} groupId={house.groupId} />
+          </div>
         </div>
-        <CreateDialog
-          title="Create a group"
-          description="A group lets you manage houses and share access with other members."
-          action={createGroup}
-          triggerLabel="New group"
-          submitLabel="Create group"
-        />
-      </div>
 
-      <div className="flex-1 overflow-y-auto px-8 py-6">
-        {isAdmin && (
-          <div className="mb-8 p-5 bg-card rounded-xl border border-border">
+        <div className="flex-1 overflow-y-auto px-8 py-6">
+          {cameras.length === 0 ? (
+            <div className="mt-16 flex flex-col items-center gap-4 text-center">
+              <div className="flex size-16 items-center justify-center rounded-2xl border-2 border-dashed border-border bg-muted/40">
+                <Video className="size-7 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="font-medium">No cameras in this room</p>
+                <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                  Flash an ESP32-CAM with our firmware and it will appear here automatically.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {cameras.map((camera) => (
+                <CameraCard key={camera.id} camera={camera} path="/dashboard" />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── House view (all cameras grouped by room) ─────────────────────────────────
+  if (selectedHouseId) {
+    const house = await getHouseById(selectedHouseId)
+    if (!house) redirect("/dashboard")
+
+    const member = await isGroupMember(house.groupId, user.id)
+    if (!member) return <AccessDenied />
+
+    const rooms = await getRoomsWithCameraCount(selectedHouseId)
+
+    // No rooms yet → prompt to create one
+    if (rooms.length === 0) {
+      return (
+        <div className="flex flex-col h-full">
+          <div className="flex items-center justify-between px-8 py-5 border-b border-border bg-card">
+            <div>
+              <h1 className="text-lg font-semibold tracking-tight">{house.name}</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">No rooms yet</p>
+            </div>
+            <CreateDialog
+              title="Add a room"
+              description="Add a room to start assigning cameras to it."
+              action={createRoom}
+              hiddenFields={{ houseId: house.id }}
+              triggerLabel="Add room"
+              submitLabel="Add room"
+            />
+          </div>
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center p-8">
+            <div className="flex size-16 items-center justify-center rounded-2xl border-2 border-dashed border-border bg-muted/40">
+              <DoorOpen className="size-7 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="font-medium">No rooms yet</p>
+              <p className="mt-1 text-sm text-muted-foreground max-w-xs">
+                Add rooms to this building to start organising and assigning cameras.
+              </p>
+            </div>
+            <CreateDialog
+              title="Add a room"
+              description="Add a room to start assigning cameras to it."
+              action={createRoom}
+              hiddenFields={{ houseId: house.id }}
+              triggerLabel="Add your first room"
+              submitLabel="Add room"
+            />
+          </div>
+        </div>
+      )
+    }
+
+    // Fetch cameras for each room
+    const roomsWithCameras = await Promise.all(
+      rooms.map(async (r) => ({
+        room: r,
+        cameras: await getCamerasByRoomId(r.id),
+      }))
+    )
+    const totalCameras = roomsWithCameras.reduce((sum, { cameras }) => sum + cameras.length, 0)
+
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between px-8 py-5 border-b border-border bg-card">
+          <div>
+            <h1 className="text-lg font-semibold tracking-tight">{house.name}</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {totalCameras} {totalCameras === 1 ? "camera" : "cameras"} across {rooms.length}{" "}
+              {rooms.length === 1 ? "room" : "rooms"}
+            </p>
+          </div>
+          <CreateDialog
+            title="Add a room"
+            description="Add a room to start assigning cameras to it."
+            action={createRoom}
+            hiddenFields={{ houseId: house.id }}
+            triggerLabel="Add room"
+            submitLabel="Add room"
+          />
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-8 py-6 space-y-8">
+          {roomsWithCameras.map(({ room, cameras }) => (
+            <section key={room.id}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <DoorOpen className="size-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold">{room.name}</h2>
+                  <span className="text-xs text-muted-foreground">
+                    ({cameras.length} {cameras.length === 1 ? "camera" : "cameras"})
+                  </span>
+                </div>
+                <AddCameraDialog roomId={room.id} groupId={house.groupId} />
+              </div>
+
+              {cameras.length === 0 ? (
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-border text-muted-foreground text-sm">
+                  <Video className="size-4 flex-shrink-0" />
+                  <span>No cameras in this room yet.</span>
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {cameras.map((camera) => (
+                    <CameraCard key={camera.id} camera={camera} path="/dashboard" />
+                  ))}
+                </div>
+              )}
+            </section>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // ── No selection — welcome / empty state ─────────────────────────────────────
+  return (
+    <div className="flex flex-col h-full overflow-y-auto">
+      {isAdmin && (
+        <div className="px-8 py-6 border-b border-border">
+          <div className="p-5 bg-card rounded-xl border border-border">
             <div className="flex items-center gap-2 mb-1">
               <ShieldCheck className="size-4 text-primary" />
               <h2 className="text-sm font-semibold">All connected devices</h2>
@@ -46,47 +210,19 @@ export default async function DashboardPage() {
             </p>
             <AdminDebugButton />
           </div>
-        )}
-
-        {userGroups.length === 0 ? (
-          <div className="mt-16 flex flex-col items-center gap-4 text-center">
-            <div className="flex size-16 items-center justify-center rounded-2xl border-2 border-dashed border-border bg-muted/40">
-              <Users className="size-7 text-muted-foreground" />
-            </div>
-            <div>
-              <p className="font-medium">No groups yet</p>
-              <p className="mt-1 text-sm text-muted-foreground max-w-xs">
-                Create a group to start managing your security cameras.
-              </p>
-            </div>
-            <CreateDialog
-              title="Create a group"
-              description="A group lets you manage houses and share access with other members."
-              action={createGroup}
-              triggerLabel="Create your first group"
-              submitLabel="Create group"
-            />
-          </div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {userGroups.map((g) => (
-              <Link key={g.id} href={`/dashboard/${g.id}`}>
-                <div className="group flex items-center justify-between p-4 bg-card rounded-xl border border-border hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer">
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-10 items-center justify-center rounded-lg bg-primary/8 text-primary border border-primary/15">
-                      <Home className="size-4" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm leading-none">{g.name}</p>
-                      <p className="mt-1.5 text-xs text-muted-foreground capitalize">{g.role}</p>
-                    </div>
-                  </div>
-                  <ChevronRight className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
+        </div>
+      )}
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center p-8">
+        <div className="flex size-16 items-center justify-center rounded-2xl border-2 border-dashed border-border bg-muted/40">
+          <Building2 className="size-7 text-muted-foreground" />
+        </div>
+        <div>
+          <p className="font-medium">Select a building or room</p>
+          <p className="mt-1 text-sm text-muted-foreground max-w-xs">
+            Choose a building from the sidebar to see all its cameras, or pick a specific room to
+            filter the view.
+          </p>
+        </div>
       </div>
     </div>
   )

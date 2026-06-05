@@ -16,7 +16,7 @@ import { createClaimToken } from "@/drizzle/actions/claimTokens"
 export type CreateState = { error?: string; success?: boolean } | null
 
 export async function createGroup(
-  prevState: CreateState,
+  _prevState: CreateState,
   formData: FormData
 ): Promise<CreateState> {
   const { user } = await getCurrentSession()
@@ -35,7 +35,7 @@ export async function createGroup(
 // ── House ─────────────────────────────────────────────────────────────────────
 
 export async function createHouse(
-  prevState: CreateState,
+  _prevState: CreateState,
   formData: FormData
 ): Promise<CreateState> {
   const { user } = await getCurrentSession()
@@ -50,21 +50,20 @@ export async function createHouse(
   const house = await createHouseRecord(groupId, name, address || undefined)
   if (!house) return { error: "Failed to create house." }
 
-  revalidatePath(`/dashboard/${groupId}`)
+  revalidatePath("/dashboard")
   return { success: true }
 }
 
 // ── Room ──────────────────────────────────────────────────────────────────────
 
 export async function createRoom(
-  prevState: CreateState,
+  _prevState: CreateState,
   formData: FormData
 ): Promise<CreateState> {
   const { user } = await getCurrentSession()
   if (!user) return { error: "Not authenticated." }
 
   const houseId = Number(formData.get("houseId"))
-  const groupId = Number(formData.get("groupId"))
   const name = (formData.get("name") as string)?.trim()
 
   if (!name) return { error: "Name is required." }
@@ -72,7 +71,7 @@ export async function createRoom(
   const room = await createRoomRecord(houseId, name)
   if (!room) return { error: "Failed to create room." }
 
-  revalidatePath(`/dashboard/${groupId}/${houseId}`)
+  revalidatePath("/dashboard")
   return { success: true }
 }
 
